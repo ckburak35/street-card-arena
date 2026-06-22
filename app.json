@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Street Card Arena",
+    "slug": "street-card-arena",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "streetcardarena",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Sokakta gördüğünüz kedi ve köpekleri oyun kartına dönüştürmek için kamera kullanılır.",
+        "NSPhotoLibraryUsageDescription": "İsterseniz galerinizden bir hayvan fotoğrafı seçip kart oluşturabilirsiniz."
+      }
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-image-picker"
+    ]
+  }
+}

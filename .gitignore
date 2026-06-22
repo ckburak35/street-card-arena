@@ -1,0 +1,9 @@
+node_modules/
+.pnpm-store/
+.expo/
+.expo-output.log
+.expo-error.log
+.pwa-output.log
+.pwa-error.log
+npm-debug.log*
+pnpm-debug.log*

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111318" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Street Cards" />
+    <title>Street Card Arena</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Street Card Arena</h1>
+          <p id="cardCount">0 kart</p>
+        </div>
+        <button id="installButton" class="ghost-button" type="button" hidden>Yukle</button>
+      </header>
+
+      <section id="captureView" class="view active">
+        <div class="camera-panel">
+          <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
+          <canvas id="captureCanvas" hidden></canvas>
+          <div id="cameraFallback" class="camera-fallback">
+            <strong>Kamera hazir degil</strong>
+            <span>Site HTTPS veya localhost uzerinden acilinca kamera calisir.</span>
+          </div>
+          <div class="target-frame" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <div class="capture-controls">
+          <div class="segmented" role="group" aria-label="Hayvan turu">
+            <button class="segment active" data-kind="cat" type="button">Kedi</button>
+            <button class="segment" data-kind="dog" type="button">Kopek</button>
+          </div>
+          <div class="action-row">
+            <label class="secondary-button">
+              Galeri
+              <input id="fileInput" type="file" accept="image/*" capture="environment" hidden />
+            </label>
+            <button id="scanButton" class="primary-button" type="button">Tara</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="collectionView" class="view">
+        <div id="emptyCollection" class="empty-state">
+          <h2>Henuz kart yok</h2>
+          <p>Bir kedi veya kopek fotografi cekerek ilk kartini olustur.</p>
+        </div>
+        <div id="collectionList" class="card-list"></div>
+      </section>
+
+      <section id="battleView" class="view">
+        <div id="battleEmpty" class="empty-state">
+          <h2>Kapisma icin 2 kart gerekli</h2>
+          <p>Iki kart olusturdugunda burada savastirabilirsin.</p>
+        </div>
+        <div id="battleReady" class="battle-layout" hidden>
+          <div class="battle-heading">
+            <h2>Kart Sec</h2>
+            <button id="resetBattleButton" class="ghost-button" type="button">Sifirla</button>
+          </div>
+          <div id="battleRail" class="battle-rail"></div>
+          <div id="battleResult" class="battle-result">
+            <p>Once kendi kartini, sonra rakip karti sec.</p>
+          </div>
+        </div>
+      </section>
+
+      <nav class="tabbar" aria-label="Ana gezinme">
+        <button class="tab active" data-view="captureView" type="button">Tara</button>
+        <button class="tab" data-view="collectionView" type="button">Koleksiyon</button>
+        <button class="tab" data-view="battleView" type="button">Kapistir</button>
+      </nav>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
