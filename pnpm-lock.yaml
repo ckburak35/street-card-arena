@@ -11,6 +11,9 @@ importers:
       '@netlify/blobs':
         specifier: 10.7.9
         version: 10.7.9
+      '@netlify/dev-utils':
+        specifier: 4.4.6
+        version: 4.4.6
       '@react-native-async-storage/async-storage':
         specifier: ^2.1.2
         version: 2.2.0(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))

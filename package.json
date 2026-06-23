@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@netlify/blobs": "10.7.9",
+    "@netlify/dev-utils": "4.4.6",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "expo": "^54.0.35",
     "expo-camera": "~17.0.10",
