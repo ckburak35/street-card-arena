@@ -121,8 +121,9 @@ function captureFromFile(event) {
 async function createCard(imageUri) {
   setBusy(true);
   try {
+    const analysis = await analyzeCard(imageUri, selectedKind);
     const cardImageUri = await createStickerCardImage(imageUri, selectedKind);
-    cards = [generateAnimalCard(imageUri, cardImageUri, selectedKind), ...cards];
+    cards = [generateAnimalCard(imageUri, cardImageUri, selectedKind, analysis), ...cards];
   } catch {
     cards = [generateAnimalCard(imageUri, imageUri, selectedKind), ...cards];
   }
@@ -130,6 +131,35 @@ async function createCard(imageUri) {
   switchView('collectionView');
   render();
   setBusy(false);
+}
+
+async function analyzeCard(imageUri, animalKind) {
+  try {
+    const analysisImageUri = await createAnalysisImage(imageUri);
+    const response = await fetch('/api/analyze-card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUri: analysisImageUri, selectedKind: animalKind })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data.analysis?.isAnimal) return null;
+    return data.analysis;
+  } catch {
+    return null;
+  }
+}
+
+async function createAnalysisImage(imageUri) {
+  const image = await loadImage(imageUri);
+  const maxSide = 768;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.78);
 }
 
 function render() {
@@ -225,6 +255,7 @@ function cardNode(card, options = {}) {
       </div>
       <div class="overall-badge">${card.stats.overall}</div>
     </div>
+    ${card.summary ? `<p class="card-summary">${escapeHtml(card.summary)}</p>` : ''}
     <div class="stats">
       ${statRows.map(([label, key]) => `
         <div class="stat-row">
@@ -240,7 +271,23 @@ function cardNode(card, options = {}) {
   return article;
 }
 
-function generateAnimalCard(imageUri, cardImageUri, animalKind) {
+function generateAnimalCard(imageUri, cardImageUri, animalKind, analysis = null) {
+  if (analysis) {
+    return {
+      id: `${Date.now()}-${hash(imageUri)}`,
+      name: analysis.name,
+      animalKind: analysis.animalKind === 'unknown' ? animalKind : analysis.animalKind,
+      imageUri,
+      cardImageUri,
+      rarity: analysis.rarity,
+      stats: analysis.stats,
+      summary: analysis.summary,
+      backgroundStyle: analysis.backgroundStyle,
+      aiAnalyzed: true,
+      createdAt: new Date().toISOString()
+    };
+  }
+
   const seed = hash(`${imageUri}-${Date.now()}`);
   const speciesBoost = animalKind === 'dog' ? [4, 2, 7, -1] : [7, 1, 1, 6];
   const speed = clamp(ranged(seed, 1, 34, 96) + speciesBoost[0]);
@@ -265,6 +312,9 @@ function generateAnimalCard(imageUri, cardImageUri, animalKind) {
     cardImageUri,
     rarity,
     stats: { speed, stamina, power, charm, overall },
+    summary: 'Yerel kart uretimi kullanildi.',
+    backgroundStyle: 'arcade sokak sahnesi',
+    aiAnalyzed: false,
     createdAt: new Date().toISOString()
   };
 }

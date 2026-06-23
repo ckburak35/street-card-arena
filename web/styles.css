@@ -333,6 +333,14 @@ label {
   font-weight: 950;
 }
 
+.card-summary {
+  margin: -2px 0 0;
+  color: #dce4f2;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
 .overall-badge {
   width: 56px;
   height: 56px;

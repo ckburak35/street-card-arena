@@ -58,7 +58,17 @@ http://localhost:4173
 
 ## AI Notu
 
-Bu prototipte kart analizi simdilik mock calisir. Kart gorseli ise tarayici icinde sahnelestirilir: fotograf arka plana yayilir, ana fotograf sticker gibi one alinir.
+Kart analizi Netlify Function uzerinden OpenAI API kullanabilir. `OPENAI_API_KEY` Netlify environment variable olarak eklenmezse uygulama otomatik olarak yerel/mock kart uretimine duser.
+
+Netlify'da:
+
+1. Project configuration ekranina gir.
+2. Environment variables bolumunu ac.
+3. `OPENAI_API_KEY` adinda degisken ekle.
+4. Deger olarak OpenAI API anahtarini gir.
+5. Deploys ekranindan yeni deploy tetikle veya GitHub'a yeni commit push et.
+
+Kart gorseli tarayici icinde sahnelestirilir: fotograf arka plana yayilir, ana fotograf sticker gibi one alinir.
 
 Gercek AI asamasi icin iki backend endpoint'i eklemek gerekir:
 
