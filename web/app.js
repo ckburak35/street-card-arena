@@ -337,8 +337,9 @@ function generateAnimalCard(imageUri, cardImageUri, analysis = null) {
   const stamina = clamp(Math.round(30 + (100 - Math.abs(58 - metrics.brightness)) * 0.34 + metrics.contrast * 0.22 + ranged(seed, 2, 0, 18)));
   const power = clamp(Math.round(26 + metrics.contrast * 0.42 + metrics.clarity * 0.24 + ranged(seed, 3, 0, 20)));
   const charm = clamp(Math.round(34 + metrics.color * 0.34 + metrics.saturation * 0.32 + ranged(seed, 4, 0, 18)));
-  const overall = clamp(Math.round(speed * 0.24 + stamina * 0.22 + power * 0.22 + charm * 0.24 + metrics.clarity * 0.08));
-  const rarity = pickRarity(overall, ranged(seed, 6, 0, 100));
+  const rawOverall = clamp(Math.round(speed * 0.24 + stamina * 0.22 + power * 0.22 + charm * 0.24 + metrics.clarity * 0.08));
+  const overall = shapeOverall(rawOverall, metrics, seed);
+  const rarity = pickRarity(overall);
   const names = {
     Common: ['Sokak Ruhu', 'Mahalle Dostu', 'Minik Kasif'],
     Uncommon: ['Parlak Gezgin', 'Canli Bakis', 'Hizli Siluet'],
@@ -509,13 +510,47 @@ function calculateBattle(first, second) {
   };
 }
 
-function pickRarity(overall, luck) {
-  const boosted = overall + Math.round(luck / 8);
-  if (boosted >= 95) return 'Mythic';
-  if (boosted >= 88) return 'Legendary';
-  if (boosted >= 78) return 'Epic';
-  if (boosted >= 68) return 'Rare';
-  if (boosted >= 58) return 'Uncommon';
+function shapeOverall(rawOverall, metrics, seed) {
+  const photoQuality = Math.round(
+    rawOverall * 0.5 +
+    metrics.clarity * 0.18 +
+    metrics.contrast * 0.14 +
+    metrics.color * 0.1 +
+    metrics.saturation * 0.08
+  );
+  const qualityShift = Math.max(-18, Math.min(22, photoQuality - 66));
+  const roll = ranged(seed, 7, 0, 999) / 10 + qualityShift * 0.72;
+  let min = 50;
+  let max = 59;
+
+  if (roll < 7) {
+    min = 42; max = 49;
+  } else if (roll < 35) {
+    min = 50; max = 59;
+  } else if (roll < 70) {
+    min = 60; max = 69;
+  } else if (roll < 90) {
+    min = 70; max = 79;
+  } else if (roll < 98) {
+    min = 80; max = 89;
+  } else if (roll < 99.6) {
+    min = 90; max = 96;
+  } else {
+    if (roll >= 109 && photoQuality >= 88) return 100;
+    min = 97; max = 99;
+  }
+
+  const withinBand = ranged(seed, 8, 0, max - min);
+  const qualityNudge = Math.round((photoQuality - 66) / 11);
+  return Math.max(min, Math.min(max, min + withinBand + qualityNudge));
+}
+
+function pickRarity(overall) {
+  if (overall >= 97) return 'Mythic';
+  if (overall >= 90) return 'Legendary';
+  if (overall >= 82) return 'Epic';
+  if (overall >= 72) return 'Rare';
+  if (overall >= 60) return 'Uncommon';
   return 'Common';
 }
 
