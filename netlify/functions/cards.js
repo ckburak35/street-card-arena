@@ -1,8 +1,10 @@
-const { getStore } = require('@netlify/blobs');
+const { connectLambda, getStore } = require('@netlify/blobs');
 
 const maxCards = 80;
 
 exports.handler = async (event) => {
+  connectLambda(event);
+
   const code = cleanCode(event.queryStringParameters?.code || readCodeFromBody(event.body));
   if (!code) return json(400, { error: 'invalid_code' });
 
