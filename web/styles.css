@@ -25,7 +25,7 @@ label {
   min-height: 100dvh;
   margin: 0 auto;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr auto;
   background: #111318;
 }
 
@@ -48,6 +48,84 @@ label {
   margin: 5px 0 0;
   color: #95a1b2;
   font-weight: 800;
+}
+
+.account-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #252a34;
+  background: #171a21;
+}
+
+.account-panel strong,
+.account-panel small,
+.eyebrow {
+  display: block;
+}
+
+.eyebrow {
+  color: #95a1b2;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.account-panel strong {
+  margin-top: 2px;
+  color: #fff8ea;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.account-panel small {
+  margin-top: 2px;
+  color: #aeb8c8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.account-actions,
+.collection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-button {
+  min-height: 36px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 8px;
+  color: #f5f7fb;
+  background: #232833;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.code-login {
+  display: grid;
+  grid-template-columns: 1fr 96px;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #252a34;
+  background: #101319;
+}
+
+.code-login input {
+  min-width: 0;
+  height: 42px;
+  border: 1px solid #323a48;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #fff8ea;
+  background: #171b23;
+  font: inherit;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .view {
@@ -142,6 +220,19 @@ label {
   padding: 14px;
 }
 
+.scan-note {
+  margin: 0;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #dce4f2;
+  background: #20252f;
+  font-size: 14px;
+  font-weight: 850;
+  text-align: center;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -186,6 +277,11 @@ label {
   height: 56px;
   display: grid;
   place-items: center;
+}
+
+.primary-button.small {
+  height: 42px;
+  font-size: 13px;
 }
 
 .primary-button:disabled {
@@ -239,10 +335,84 @@ label {
 }
 
 .card-list,
-.battle-layout {
+.battle-layout,
+.collection-deck {
   display: grid;
   gap: 14px;
   padding: 14px;
+}
+
+.collection-toolbar {
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 9px;
+  border-radius: 8px;
+  background: #20252f;
+}
+
+.collection-toolbar div {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.collection-toolbar strong {
+  color: #fff8ea;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.collection-toolbar small {
+  color: #aeb8c8;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.collection-rail {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+}
+
+.mini-card {
+  width: 104px;
+  flex: 0 0 104px;
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: #fff8ea;
+  background: #20252f;
+  font: inherit;
+  text-align: left;
+}
+
+.mini-card.active {
+  border-color: #f0b84f;
+}
+
+.mini-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.mini-card span {
+  overflow: hidden;
+  color: #dce4f2;
+  font-size: 11px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-card strong {
+  color: #f0b84f;
+  font-size: 18px;
+  font-weight: 950;
 }
 
 .game-card {

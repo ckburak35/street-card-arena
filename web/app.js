@@ -1,4 +1,5 @@
 const storageKey = 'street-card-arena.cards.v1';
+const accountStorageKey = 'street-card-arena.account-code.v1';
 const rarityTone = {
   Common: { border: '#8b98a8', fill: '#242a32', text: '#d6dde7' },
   Uncommon: { border: '#53c48b', fill: '#14352c', text: '#b8f4cf' },
@@ -16,10 +17,12 @@ const statRows = [
 ];
 
 let cards = loadCards();
-let selectedKind = 'cat';
+let accountCode = loadAccountCode();
+let activeCollectionIndex = 0;
 let battleFirstId = null;
 let battleSecondId = null;
 let installPrompt = null;
+let syncTimer = null;
 
 const elements = {
   video: document.querySelector('#cameraPreview'),
@@ -28,8 +31,22 @@ const elements = {
   scanButton: document.querySelector('#scanButton'),
   fileInput: document.querySelector('#fileInput'),
   count: document.querySelector('#cardCount'),
+  accountCode: document.querySelector('#accountCode'),
+  syncStatus: document.querySelector('#syncStatus'),
+  copyCodeButton: document.querySelector('#copyCodeButton'),
+  switchCodeButton: document.querySelector('#switchCodeButton'),
+  codeLoginPanel: document.querySelector('#codeLoginPanel'),
+  codeInput: document.querySelector('#codeInput'),
+  loadCodeButton: document.querySelector('#loadCodeButton'),
   collectionList: document.querySelector('#collectionList'),
   emptyCollection: document.querySelector('#emptyCollection'),
+  collectionDeck: document.querySelector('#collectionDeck'),
+  featuredCard: document.querySelector('#featuredCard'),
+  collectionRail: document.querySelector('#collectionRail'),
+  prevCardButton: document.querySelector('#prevCardButton'),
+  nextCardButton: document.querySelector('#nextCardButton'),
+  activeCardIndex: document.querySelector('#activeCardIndex'),
+  collectionPower: document.querySelector('#collectionPower'),
   battleEmpty: document.querySelector('#battleEmpty'),
   battleReady: document.querySelector('#battleReady'),
   battleRail: document.querySelector('#battleRail'),
@@ -42,15 +59,16 @@ document.querySelectorAll('.tab').forEach((button) => {
   button.addEventListener('click', () => switchView(button.dataset.view));
 });
 
-document.querySelectorAll('.segment').forEach((button) => {
-  button.addEventListener('click', () => {
-    selectedKind = button.dataset.kind;
-    document.querySelectorAll('.segment').forEach((item) => item.classList.toggle('active', item === button));
-  });
-});
-
 elements.scanButton.addEventListener('click', captureFromCamera);
 elements.fileInput.addEventListener('change', captureFromFile);
+elements.copyCodeButton.addEventListener('click', copyAccountCode);
+elements.switchCodeButton.addEventListener('click', () => {
+  elements.codeLoginPanel.hidden = !elements.codeLoginPanel.hidden;
+  elements.codeInput.value = accountCode;
+});
+elements.loadCodeButton.addEventListener('click', loadCollectionByCode);
+elements.prevCardButton.addEventListener('click', () => moveActiveCard(-1));
+elements.nextCardButton.addEventListener('click', () => moveActiveCard(1));
 elements.resetBattleButton.addEventListener('click', () => {
   battleFirstId = null;
   battleSecondId = null;
@@ -79,6 +97,7 @@ if ('serviceWorker' in navigator) {
 
 startCamera();
 render();
+syncFromCloud();
 
 async function startCamera() {
   if (!navigator.mediaDevices?.getUserMedia) return;
@@ -121,48 +140,70 @@ function captureFromFile(event) {
 async function createCard(imageUri) {
   setBusy(true);
   try {
-    const analysis = await analyzeCard(imageUri, selectedKind);
-    const cardImageUri = await createStickerCardImage(imageUri, selectedKind);
-    cards = [generateAnimalCard(imageUri, cardImageUri, selectedKind, analysis), ...cards];
+    const analysis = await analyzeLocalImage(imageUri);
+    const cardImageUri = await createStickerCardImage(imageUri, analysis);
+    cards = [generateAnimalCard(imageUri, cardImageUri, analysis), ...cards].slice(0, 80);
   } catch {
-    cards = [generateAnimalCard(imageUri, imageUri, selectedKind), ...cards];
+    cards = [generateAnimalCard(imageUri, imageUri, null), ...cards].slice(0, 80);
   }
+  activeCollectionIndex = 0;
   saveCards();
+  scheduleCloudSave();
   switchView('collectionView');
   render();
   setBusy(false);
 }
 
-async function analyzeCard(imageUri, animalKind) {
-  try {
-    const analysisImageUri = await createAnalysisImage(imageUri);
-    const response = await fetch('/api/analyze-card', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageUri: analysisImageUri, selectedKind: animalKind })
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (!data.analysis?.isAnimal) return null;
-    return data.analysis;
-  } catch {
-    return null;
-  }
-}
-
-async function createAnalysisImage(imageUri) {
+async function analyzeLocalImage(imageUri) {
   const image = await loadImage(imageUri);
-  const maxSide = 768;
+  const maxSide = 180;
   const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(image.width * scale));
   canvas.height = Math.max(1, Math.round(image.height * scale));
   const ctx = canvas.getContext('2d');
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.78);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let brightness = 0;
+  let saturation = 0;
+  let colorSpread = 0;
+  let contrast = 0;
+  let previousLum = null;
+  const buckets = new Set();
+
+  for (let i = 0; i < data.length; i += 16) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    brightness += lum;
+    saturation += max === 0 ? 0 : (max - min) / max;
+    colorSpread += max - min;
+    if (previousLum !== null) contrast += Math.abs(lum - previousLum);
+    previousLum = lum;
+    buckets.add(`${Math.floor(r / 48)}-${Math.floor(g / 48)}-${Math.floor(b / 48)}`);
+  }
+
+  const samples = Math.max(1, Math.floor(data.length / 16));
+  const brightnessScore = Math.round((brightness / samples / 255) * 100);
+  const saturationScore = Math.round((saturation / samples) * 100);
+  const contrastScore = Math.min(100, Math.round((contrast / samples / 42) * 100));
+  const colorScore = Math.min(100, Math.round((buckets.size / 54) * 100 + colorSpread / samples / 3));
+  const clarityScore = Math.round(contrastScore * 0.68 + saturationScore * 0.22 + (100 - Math.abs(58 - brightnessScore)) * 0.1);
+
+  return {
+    brightness: clamp(brightnessScore),
+    saturation: clamp(saturationScore),
+    contrast: clamp(contrastScore),
+    color: clamp(colorScore),
+    clarity: clamp(clarityScore)
+  };
 }
 
 function render() {
+  elements.accountCode.textContent = accountCode;
   elements.count.textContent = `${cards.length} kart`;
   renderCollection();
   renderBattle();
@@ -170,22 +211,40 @@ function render() {
 
 function renderCollection() {
   elements.emptyCollection.hidden = cards.length > 0;
-  elements.collectionList.innerHTML = '';
-  cards.forEach((card) => {
-    const node = cardNode(card);
-    const deleteButton = document.createElement('button');
-    deleteButton.className = 'delete-card segment';
-    deleteButton.type = 'button';
-    deleteButton.textContent = 'Sil';
-    deleteButton.addEventListener('click', () => {
-      cards = cards.filter((item) => item.id !== card.id);
-      if (battleFirstId === card.id) battleFirstId = null;
-      if (battleSecondId === card.id) battleSecondId = null;
-      saveCards();
-      render();
+  elements.collectionDeck.hidden = cards.length === 0;
+  elements.featuredCard.innerHTML = '';
+  elements.collectionRail.innerHTML = '';
+
+  if (cards.length === 0) return;
+
+  activeCollectionIndex = Math.max(0, Math.min(activeCollectionIndex, cards.length - 1));
+  const activeCard = cards[activeCollectionIndex];
+  const featured = cardNode(activeCard);
+  const deleteButton = document.createElement('button');
+  deleteButton.className = 'delete-card segment';
+  deleteButton.type = 'button';
+  deleteButton.textContent = 'Karti sil';
+  deleteButton.addEventListener('click', () => deleteCard(activeCard.id));
+  featured.appendChild(deleteButton);
+  elements.featuredCard.appendChild(featured);
+
+  elements.activeCardIndex.textContent = `${activeCollectionIndex + 1} / ${cards.length}`;
+  elements.collectionPower.textContent = `Koleksiyon gucu ${collectionPower()}`;
+
+  cards.forEach((card, index) => {
+    const button = document.createElement('button');
+    button.className = `mini-card${index === activeCollectionIndex ? ' active' : ''}`;
+    button.type = 'button';
+    button.innerHTML = `
+      <img src="${card.cardImageUri || card.imageUri}" alt="${escapeHtml(card.name)}" />
+      <span>${escapeHtml(card.name)}</span>
+      <strong>${card.stats.overall}</strong>
+    `;
+    button.addEventListener('click', () => {
+      activeCollectionIndex = index;
+      renderCollection();
     });
-    node.appendChild(deleteButton);
-    elements.collectionList.appendChild(node);
+    elements.collectionRail.appendChild(button);
   });
 }
 
@@ -246,7 +305,7 @@ function cardNode(card, options = {}) {
   article.innerHTML = `
     <div class="card-art">
       <img class="card-image" src="${card.cardImageUri || card.imageUri}" alt="${escapeHtml(card.name)}" />
-      <div class="card-art-badge">${card.animalKind === 'dog' ? 'Kopek' : 'Kedi'}</div>
+      <div class="card-art-badge">${card.aiAnalyzed ? 'Analizli' : 'Yerel analiz'}</div>
     </div>
     <div class="card-top">
       <div>
@@ -271,63 +330,62 @@ function cardNode(card, options = {}) {
   return article;
 }
 
-function generateAnimalCard(imageUri, cardImageUri, animalKind, analysis = null) {
-  if (analysis) {
-    return {
-      id: `${Date.now()}-${hash(imageUri)}`,
-      name: analysis.name,
-      animalKind: analysis.animalKind === 'unknown' ? animalKind : analysis.animalKind,
-      imageUri,
-      cardImageUri,
-      rarity: analysis.rarity,
-      stats: analysis.stats,
-      summary: analysis.summary,
-      backgroundStyle: analysis.backgroundStyle,
-      aiAnalyzed: true,
-      createdAt: new Date().toISOString()
-    };
-  }
-
+function generateAnimalCard(imageUri, cardImageUri, analysis = null) {
   const seed = hash(`${imageUri}-${Date.now()}`);
-  const speciesBoost = animalKind === 'dog' ? [4, 2, 7, -1] : [7, 1, 1, 6];
-  const speed = clamp(ranged(seed, 1, 34, 96) + speciesBoost[0]);
-  const stamina = clamp(ranged(seed, 2, 34, 96) + speciesBoost[1]);
-  const power = clamp(ranged(seed, 3, 34, 96) + speciesBoost[2]);
-  const charm = clamp(ranged(seed, 4, 42, 99) + speciesBoost[3]);
-  const overall = clamp(Math.round(speed * 0.23 + stamina * 0.22 + power * 0.23 + charm * 0.22 + ranged(seed, 5, 0, 10)));
+  const metrics = analysis || { brightness: 50, saturation: 50, contrast: 50, color: 50, clarity: 50 };
+  const speed = clamp(Math.round(28 + metrics.clarity * 0.48 + metrics.contrast * 0.22 + ranged(seed, 1, 0, 16)));
+  const stamina = clamp(Math.round(30 + (100 - Math.abs(58 - metrics.brightness)) * 0.34 + metrics.contrast * 0.22 + ranged(seed, 2, 0, 18)));
+  const power = clamp(Math.round(26 + metrics.contrast * 0.42 + metrics.clarity * 0.24 + ranged(seed, 3, 0, 20)));
+  const charm = clamp(Math.round(34 + metrics.color * 0.34 + metrics.saturation * 0.32 + ranged(seed, 4, 0, 18)));
+  const overall = clamp(Math.round(speed * 0.24 + stamina * 0.22 + power * 0.22 + charm * 0.24 + metrics.clarity * 0.08));
   const rarity = pickRarity(overall, ranged(seed, 6, 0, 100));
   const names = {
-    Common: ['Sokak Karti', 'Mahalle Karti'],
-    Uncommon: ['Parlak Sokakli', 'Hizli Dost'],
-    Rare: ['Nadir Dost', 'Gece Gezgin'],
-    Epic: ['Epik Patili', 'Cadde Sampiyonu'],
-    Legendary: ['Efsane Patili', 'Altin Bakis'],
-    Mythic: ['Mitik Dost', 'Sehrin Yildizi']
+    Common: ['Sokak Ruhu', 'Mahalle Dostu', 'Minik Kasif'],
+    Uncommon: ['Parlak Gezgin', 'Canli Bakis', 'Hizli Siluet'],
+    Rare: ['Nadir Karsilasma', 'Gece Yildizi', 'Renkli Efsane'],
+    Epic: ['Epik Yabani', 'Cadde Sampiyonu', 'Kral Bakis'],
+    Legendary: ['Efsane Canli', 'Altin Iz', 'Sehrin Gururu'],
+    Mythic: ['Mitik Karsilasma', 'Dogal Mucize', 'Sakli Efsane']
   };
+  const summary = makeSummary(metrics, rarity);
   return {
     id: `${Date.now()}-${seed}`,
     name: names[rarity][seed % names[rarity].length],
-    animalKind,
+    animalKind: 'animal',
     imageUri,
     cardImageUri,
     rarity,
     stats: { speed, stamina, power, charm, overall },
-    summary: 'Yerel kart uretimi kullanildi.',
-    backgroundStyle: 'arcade sokak sahnesi',
+    summary,
+    backgroundStyle: 'yerel analiz sahnesi',
+    analysis: metrics,
     aiAnalyzed: false,
     createdAt: new Date().toISOString()
   };
 }
 
-async function createStickerCardImage(imageUri, animalKind) {
+function makeSummary(metrics, rarity) {
+  const traits = [];
+  if (metrics.clarity >= 70) traits.push('net goruntu');
+  if (metrics.color >= 68) traits.push('renkli aura');
+  if (metrics.contrast >= 68) traits.push('guclu siluet');
+  if (metrics.brightness >= 62) traits.push('parlak sahne');
+  if (traits.length === 0) traits.push('sakin sokak enerjisi');
+  return `${rarity} kart: ${traits.slice(0, 2).join(', ')}.`;
+}
+
+async function createStickerCardImage(imageUri, analysis = null) {
   const image = await loadImage(imageUri);
   const canvas = document.createElement('canvas');
   canvas.width = 960;
   canvas.height = 960;
   const ctx = canvas.getContext('2d');
-  const palette = animalKind === 'dog'
-    ? ['#2f80ed', '#f2b84b', '#19c37d']
-    : ['#b36bff', '#f0b84f', '#ff6f91'];
+  const hue = analysis ? Math.round(analysis.color * 2.4 + analysis.contrast * 1.2) % 360 : 42;
+  const palette = [
+    `hsl(${hue} 82% 58%)`,
+    `hsl(${(hue + 48) % 360} 90% 64%)`,
+    `hsl(${(hue + 142) % 360} 72% 52%)`
+  ];
 
   drawCoverImage(ctx, image, 0, 0, canvas.width, canvas.height);
   ctx.save();
@@ -336,8 +394,8 @@ async function createStickerCardImage(imageUri, animalKind) {
   ctx.restore();
 
   const gradient = ctx.createRadialGradient(480, 390, 80, 480, 480, 650);
-  gradient.addColorStop(0, `${palette[1]}cc`);
-  gradient.addColorStop(0.42, `${palette[0]}77`);
+  gradient.addColorStop(0, alphaColor(palette[1], 0.8));
+  gradient.addColorStop(0.42, alphaColor(palette[0], 0.48));
   gradient.addColorStop(1, '#101319ee');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -395,6 +453,10 @@ function loadImage(src) {
     image.onerror = reject;
     image.src = src;
   });
+}
+
+function alphaColor(hsl, alpha) {
+  return hsl.replace('hsl(', 'hsla(').replace(')', ` / ${alpha})`);
 }
 
 function drawCoverImage(ctx, image, x, y, width, height) {
@@ -462,6 +524,26 @@ function switchView(viewId) {
   document.querySelectorAll('.tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.view === viewId));
 }
 
+function moveActiveCard(direction) {
+  if (cards.length === 0) return;
+  activeCollectionIndex = (activeCollectionIndex + direction + cards.length) % cards.length;
+  renderCollection();
+}
+
+function deleteCard(cardId) {
+  cards = cards.filter((item) => item.id !== cardId);
+  if (battleFirstId === cardId) battleFirstId = null;
+  if (battleSecondId === cardId) battleSecondId = null;
+  activeCollectionIndex = Math.max(0, Math.min(activeCollectionIndex, cards.length - 1));
+  saveCards();
+  scheduleCloudSave();
+  render();
+}
+
+function collectionPower() {
+  return cards.reduce((total, card) => total + (card.stats?.overall || 0), 0);
+}
+
 function saveCards() {
   localStorage.setItem(storageKey, JSON.stringify(cards));
 }
@@ -472,6 +554,98 @@ function loadCards() {
   } catch {
     return [];
   }
+}
+
+function loadAccountCode() {
+  const saved = localStorage.getItem(accountStorageKey);
+  if (isValidCode(saved)) return saved;
+  const code = generateAccountCode();
+  localStorage.setItem(accountStorageKey, code);
+  return code;
+}
+
+function generateAccountCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let first = '';
+  let second = '';
+  const values = new Uint8Array(8);
+  crypto.getRandomValues(values);
+  values.forEach((value, index) => {
+    if (index < 4) first += alphabet[value % alphabet.length];
+    else second += alphabet[value % alphabet.length];
+  });
+  return `SCA-${first}-${second}`;
+}
+
+function isValidCode(code) {
+  return /^SCA-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(String(code || '').trim().toUpperCase());
+}
+
+async function copyAccountCode() {
+  try {
+    await navigator.clipboard.writeText(accountCode);
+    setSyncStatus('Kod kopyalandi');
+  } catch {
+    setSyncStatus('Kod: ' + accountCode);
+  }
+}
+
+async function loadCollectionByCode() {
+  const code = String(elements.codeInput.value || '').trim().toUpperCase();
+  if (!isValidCode(code)) {
+    setSyncStatus('Kod formati hatali');
+    return;
+  }
+  accountCode = code;
+  localStorage.setItem(accountStorageKey, accountCode);
+  await syncFromCloud(true);
+  elements.codeLoginPanel.hidden = true;
+  render();
+}
+
+function scheduleCloudSave() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(saveToCloud, 650);
+}
+
+async function syncFromCloud(replaceLocal = false) {
+  setSyncStatus('Bulut kontrol ediliyor');
+  try {
+    const response = await fetch(`/api/cards?code=${encodeURIComponent(accountCode)}`);
+    if (!response.ok) throw new Error('load failed');
+    const data = await response.json();
+    if (Array.isArray(data.cards) && (replaceLocal || data.cards.length > cards.length)) {
+      cards = data.cards;
+      activeCollectionIndex = 0;
+      saveCards();
+      setSyncStatus('Koleksiyon yuklendi');
+    } else {
+      setSyncStatus('Koleksiyon hazir');
+      if (cards.length > 0 && !data.updatedAt) scheduleCloudSave();
+    }
+    render();
+  } catch {
+    setSyncStatus('Cevrimdisi kayit');
+  }
+}
+
+async function saveToCloud() {
+  setSyncStatus('Kaydediliyor');
+  try {
+    const response = await fetch('/api/cards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: accountCode, cards })
+    });
+    if (!response.ok) throw new Error('save failed');
+    setSyncStatus('Buluta kaydedildi');
+  } catch {
+    setSyncStatus('Telefona kaydedildi');
+  }
+}
+
+function setSyncStatus(message) {
+  elements.syncStatus.textContent = message;
 }
 
 function ranged(seed, salt, min, max) {

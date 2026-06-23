@@ -1,6 +1,6 @@
 # Street Card Arena
 
-Kedi ve kopek fotograflarini oyun kartina donusturen mobil odakli prototip.
+Hayvan fotograflarini oyun kartina donusturen mobil odakli prototip.
 
 Projede iki surum var:
 
@@ -12,11 +12,13 @@ Projede iki surum var:
 - Kamera ile fotograf cekme
 - Galeriden fotograf secme
 - Cekilen fotografi kart icin sticker sahnesine donusturme
+- Ucretsiz yerel fotograf analizi: parlaklik, kontrast, renk, netlik
 - Hiz, dayaniklilik, guc, cekicilik ve overall uretme
 - Common, Uncommon, Rare, Epic, Legendary ve Mythic kart enderlikleri
 - Kart koleksiyonu
+- Koleksiyon kodu ile buluta kayit ve geri yukleme
 - Iki kart arasinda basit kapisma
-- Kartlari tarayicida local olarak saklama
+- Kartlari hem tarayicida hem Netlify Blobs uzerinde saklama
 - Ana ekrana eklenebilir PWA yapisi
 
 ## Telefonda Kalici Kullanma
@@ -56,23 +58,13 @@ Sonra tarayicida:
 http://localhost:4173
 ```
 
-## AI Notu
+## Analiz Notu
 
-Kart analizi Netlify Function uzerinden OpenAI API kullanabilir. `OPENAI_API_KEY` Netlify environment variable olarak eklenmezse uygulama otomatik olarak yerel/mock kart uretimine duser.
+Bu surum OpenAI veya ucretli API kullanmaz. Kart skorlarini tarayicida fotograf uzerinden ucretsiz hesaplar:
 
-Netlify'da:
+- Parlaklik
+- Renk cesitliligi
+- Kontrast
+- Netlik tahmini
 
-1. Project configuration ekranina gir.
-2. Environment variables bolumunu ac.
-3. `OPENAI_API_KEY` adinda degisken ekle.
-4. Deger olarak OpenAI API anahtarini gir.
-5. Deploys ekranindan yeni deploy tetikle veya GitHub'a yeni commit push et.
-
-Kart gorseli tarayici icinde sahnelestirilir: fotograf arka plana yayilir, ana fotograf sticker gibi one alinir.
-
-Gercek AI asamasi icin iki backend endpoint'i eklemek gerekir:
-
-- Hayvani fotografindan ayirip transparan sticker uretme.
-- Kart icin yapay zeka arka plani uretme.
-
-Bu isler kullanicinin API anahtarini saklamak icin sadece frontend'de degil, Netlify Functions veya Supabase Edge Functions gibi backend tarafinda yapilmalidir.
+Koleksiyon kodu `SCA-XXXX-XXXX` formatindadir. Kullanici bu kodla tekrar giris yaparsa Netlify Blobs uzerindeki kartlarini geri yukleyebilir.
