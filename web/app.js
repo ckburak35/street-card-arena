@@ -142,16 +142,18 @@ async function createCard(imageUri) {
   try {
     const analysis = await analyzeLocalImage(imageUri);
     const cardImageUri = await createStickerCardImage(imageUri, analysis);
-    cards = [generateAnimalCard(imageUri, cardImageUri, analysis), ...cards].slice(0, 80);
+    cards = [generateAnimalCard(cardImageUri, cardImageUri, analysis), ...cards].slice(0, 80);
   } catch {
-    cards = [generateAnimalCard(imageUri, imageUri, null), ...cards].slice(0, 80);
+    const fallbackImage = await compressDataUrl(imageUri, 620, 0.78).catch(() => imageUri);
+    cards = [generateAnimalCard(fallbackImage, fallbackImage, null), ...cards].slice(0, 80);
+  } finally {
+    activeCollectionIndex = 0;
+    saveCards();
+    scheduleCloudSave();
+    switchView('collectionView');
+    render();
+    setBusy(false);
   }
-  activeCollectionIndex = 0;
-  saveCards();
-  scheduleCloudSave();
-  switchView('collectionView');
-  render();
-  setBusy(false);
 }
 
 async function analyzeLocalImage(imageUri) {
@@ -378,10 +380,12 @@ function makeSummary(metrics, rarity) {
 
 async function createStickerCardImage(imageUri, analysis = null) {
   const image = await loadImage(imageUri);
+  const outputSize = 620;
   const canvas = document.createElement('canvas');
-  canvas.width = 960;
-  canvas.height = 960;
+  canvas.width = outputSize;
+  canvas.height = outputSize;
   const ctx = canvas.getContext('2d');
+  ctx.scale(outputSize / 960, outputSize / 960);
   const hue = analysis ? Math.round(analysis.color * 2.4 + analysis.contrast * 1.2) % 360 : 42;
   const palette = [
     `hsl(${hue} 82% 58%)`,
@@ -445,7 +449,7 @@ async function createStickerCardImage(imageUri, analysis = null) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.restore();
 
-  return canvas.toDataURL('image/jpeg', 0.9);
+  return canvas.toDataURL('image/jpeg', 0.78);
 }
 
 function loadImage(src) {
@@ -581,15 +585,38 @@ function collectionPower() {
 }
 
 function saveCards() {
-  localStorage.setItem(storageKey, JSON.stringify(cards));
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(cards));
+  } catch {
+    cards = cards.map(trimStoredCard);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(cards));
+    } catch {
+      cards = cards.slice(0, 30);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(cards));
+      } catch {
+        setSyncStatus('Telefon hafizasi dolu');
+      }
+    }
+  }
 }
 
 function loadCards() {
   try {
-    return JSON.parse(localStorage.getItem(storageKey) || '[]');
+    return JSON.parse(localStorage.getItem(storageKey) || '[]').map(trimStoredCard);
   } catch {
     return [];
   }
+}
+
+function trimStoredCard(card) {
+  const image = card.cardImageUri || card.imageUri;
+  return {
+    ...card,
+    imageUri: image,
+    cardImageUri: image
+  };
 }
 
 function loadAccountCode() {
