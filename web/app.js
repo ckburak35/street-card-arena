@@ -651,7 +651,7 @@ async function syncFromCloud(replaceLocal = false) {
     if (!response.ok) throw new Error('load failed');
     const data = await response.json();
     if (Array.isArray(data.cards) && (replaceLocal || data.cards.length > cards.length)) {
-      cards = data.cards;
+      cards = data.cards.map(normalizeCloudCard);
       activeCollectionIndex = 0;
       saveCards();
       setSyncStatus('Koleksiyon yuklendi');
@@ -668,16 +668,52 @@ async function syncFromCloud(replaceLocal = false) {
 async function saveToCloud() {
   setSyncStatus('Kaydediliyor');
   try {
+    const cloudCards = await Promise.all(cards.map(toCloudCard));
     const response = await fetch('/api/cards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: accountCode, cards })
+      body: JSON.stringify({ code: accountCode, cards: cloudCards })
     });
     if (!response.ok) throw new Error('save failed');
     setSyncStatus('Buluta kaydedildi');
   } catch {
     setSyncStatus('Telefona kaydedildi');
   }
+}
+
+async function toCloudCard(card) {
+  let cloudImage = card.cardImageUri || card.imageUri;
+  try {
+    cloudImage = await compressDataUrl(cloudImage, 620, 0.78);
+  } catch {
+    cloudImage = card.cardImageUri || card.imageUri;
+  }
+  return {
+    ...card,
+    imageUri: cloudImage,
+    cardImageUri: cloudImage
+  };
+}
+
+function normalizeCloudCard(card) {
+  const image = card.cardImageUri || card.imageUri;
+  return {
+    ...card,
+    imageUri: image,
+    cardImageUri: image
+  };
+}
+
+async function compressDataUrl(dataUrl, maxSide, quality) {
+  if (!String(dataUrl || '').startsWith('data:image/')) return dataUrl;
+  const image = await loadImage(dataUrl);
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', quality);
 }
 
 function setSyncStatus(message) {
