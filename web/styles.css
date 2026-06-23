@@ -22,10 +22,12 @@ label {
 
 .app-shell {
   width: min(100%, 520px);
+  height: 100dvh;
   min-height: 100dvh;
   margin: 0 auto;
   display: grid;
   grid-template-rows: auto auto auto 1fr auto;
+  overflow: hidden;
   background: #111318;
 }
 
@@ -34,19 +36,20 @@ label {
   align-items: end;
   justify-content: space-between;
   gap: 14px;
-  padding: calc(env(safe-area-inset-top) + 14px) 18px 14px;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
   border-bottom: 1px solid #252a34;
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 21px;
   line-height: 1.05;
 }
 
 .topbar p {
-  margin: 5px 0 0;
+  margin: 3px 0 0;
   color: #95a1b2;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -55,7 +58,8 @@ label {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px;
+  min-height: 58px;
+  padding: 7px 12px;
   border-bottom: 1px solid #252a34;
   background: #171a21;
 }
@@ -76,14 +80,14 @@ label {
 .account-panel strong {
   margin-top: 2px;
   color: #fff8ea;
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: 0;
 }
 
 .account-panel small {
-  margin-top: 2px;
+  margin-top: 1px;
   color: #aeb8c8;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -95,8 +99,8 @@ label {
 }
 
 .icon-button {
-  min-height: 36px;
-  padding: 0 11px;
+  min-height: 34px;
+  padding: 0 10px;
   border: 0;
   border-radius: 8px;
   color: #f5f7fb;
@@ -138,10 +142,16 @@ label {
   display: block;
 }
 
+#captureView.active {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
 .camera-panel {
   position: relative;
-  height: calc(100dvh - 244px);
-  min-height: 390px;
+  height: auto;
+  min-height: 0;
   overflow: hidden;
   background: #06080c;
 }
@@ -175,7 +185,7 @@ label {
 
 .target-frame {
   position: absolute;
-  inset: 22% 11% 28%;
+  inset: 16% 10% 18%;
   pointer-events: none;
 }
 
@@ -216,19 +226,21 @@ label {
 
 .capture-controls {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 9px;
+  padding: 10px 12px;
+  border-top: 1px solid #252a34;
+  background: #111318;
 }
 
 .scan-note {
   margin: 0;
-  min-height: 42px;
+  min-height: 34px;
   display: grid;
   place-items: center;
   border-radius: 8px;
   color: #dce4f2;
   background: #20252f;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 850;
   text-align: center;
 }
@@ -268,13 +280,13 @@ label {
 
 .action-row {
   display: grid;
-  grid-template-columns: 112px 1fr;
-  gap: 10px;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
 }
 
 .primary-button,
 .secondary-button {
-  height: 56px;
+  height: 50px;
   display: grid;
   place-items: center;
 }
@@ -302,14 +314,14 @@ label {
 .tabbar {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  padding: 12px 12px calc(env(safe-area-inset-bottom) + 12px);
+  gap: 7px;
+  padding: 9px 10px calc(env(safe-area-inset-bottom) + 9px);
   border-top: 1px solid #252a34;
   background: #171a21;
 }
 
 .tab {
-  height: 46px;
+  height: 42px;
   color: #d9dfeb;
   background: #232833;
 }
@@ -637,11 +649,65 @@ label {
   }
 
   .app-shell {
+    height: 92dvh;
     min-height: 92dvh;
     margin-top: 4dvh;
     margin-bottom: 4dvh;
     border: 1px solid #303746;
     border-radius: 8px;
     overflow: hidden;
+  }
+}
+
+@media (max-height: 680px) {
+  .topbar {
+    padding: calc(env(safe-area-inset-top) + 8px) 12px 8px;
+  }
+
+  .topbar h1 {
+    font-size: 18px;
+  }
+
+  .account-panel {
+    min-height: 52px;
+    padding: 6px 10px;
+  }
+
+  .account-panel strong {
+    font-size: 14px;
+  }
+
+  .eyebrow,
+  .account-panel small {
+    font-size: 10px;
+  }
+
+  .icon-button {
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .capture-controls {
+    gap: 7px;
+    padding: 8px 10px;
+  }
+
+  .scan-note {
+    min-height: 30px;
+    font-size: 11px;
+  }
+
+  .primary-button,
+  .secondary-button {
+    height: 46px;
+  }
+
+  .tabbar {
+    padding: 7px 9px calc(env(safe-area-inset-bottom) + 7px);
+  }
+
+  .tab {
+    height: 38px;
   }
 }
