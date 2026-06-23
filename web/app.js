@@ -297,8 +297,9 @@ function chooseBattleCard(cardId) {
 
 function cardNode(card, options = {}) {
   const tone = rarityTone[card.rarity];
+  const rarityClass = `rarity-${String(card.rarity || 'Common').toLowerCase()}`;
   const article = document.createElement('article');
-  article.className = `game-card${options.compact ? ' compact' : ''}${options.selected ? ' selected' : ''}`;
+  article.className = `game-card ${rarityClass}${options.compact ? ' compact' : ''}${options.selected ? ' selected' : ''}`;
   article.style.setProperty('--rarity-border', tone.border);
   article.style.setProperty('--rarity-fill', tone.fill);
   article.style.setProperty('--rarity-text', tone.text);
