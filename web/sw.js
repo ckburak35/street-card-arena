@@ -1,4 +1,4 @@
-const cacheName = 'street-card-arena-v10';
+const cacheName = 'street-card-arena-v11';
 const assets = [
   './',
   './index.html',
